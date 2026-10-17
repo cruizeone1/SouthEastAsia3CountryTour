@@ -2,7 +2,7 @@
 (()=>{'use strict';
 const config=JSON.parse(document.getElementById('day-weather-config').textContent),root=document.getElementById('day-weather'),days=config.dates;
 const e=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
-const label=e('label','Choose your itinerary day');label.htmlFor='itinerary-day';const select=e('select');select.id='itinerary-day';
+const label=e('label','Jump to a day · full checklist stays visible');label.htmlFor='itinerary-day';const select=e('select');select.id='itinerary-day';
 if(config.kind==='singapore'){const o=e('option','All itinerary days');o.value='all';select.append(o);}
 const formatDate=d=>new Intl.DateTimeFormat('en-SG',{timeZone:config.timezone,weekday:'long',day:'numeric',month:'short',year:'numeric'}).format(new Date(d+'T12:00:00Z'));
 days.forEach(d=>{const o=e('option',formatDate(d));o.value=d;select.append(o);});
@@ -19,8 +19,8 @@ function inline(text){document.querySelectorAll('.weather-day-summary').forEach(
 function show(text){output.textContent=text;inline(text);}
 function navigate(jump){
  const date=select.value;
- if(config.kind==='singapore'){document.querySelectorAll('.day-section').forEach(s=>s.hidden=date!=='all'&&s.dataset.date!==date.slice(-2).replace(/^0/,''));document.querySelectorAll('[data-day]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.day===(date==='all'?'all':date.slice(-2).replace(/^0/,'')))));}
- else if(typeof window.goTab==='function')window.goTab(date.endsWith('15')?'timeline':'airport');
+ document.querySelectorAll('.day-section,.panel').forEach(section=>section.hidden=false);
+ if(config.kind==='singapore')document.querySelectorAll('[data-day]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.day===(date==='all'?'all':date.slice(-2).replace(/^0/,'')))));
  if(jump)(date==='all'?document.getElementById('itinerary'):target(date))?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function paint(data,date,past,historical){
@@ -44,5 +44,16 @@ async function load(force=false){
 select.addEventListener('change',()=>{navigate(true);load();});go.addEventListener('click',()=>navigate(true));refresh.addEventListener('click',()=>load(true));
 if(config.kind==='singapore'){document.querySelectorAll('[data-day]').forEach(button=>button.addEventListener('click',()=>{select.value=button.dataset.day==='all'?'all':'2026-10-'+button.dataset.day;load();}));}
 else{document.querySelectorAll('[data-tab],[data-switch]').forEach(button=>button.addEventListener('click',()=>{const tab=button.dataset.tab||button.dataset.switch;if(tab==='timeline'||tab==='airport'){select.value=tab==='timeline'?days[0]:days[1];load();}}));}
+
+const jumpNav=e('nav');jumpNav.className='quicklinks';jumpNav.setAttribute('aria-label','Jump within this city checklist');jumpNav.style.margin='12px 0';
+days.forEach(date=>{const b=e('button',formatDate(date));b.type='button';b.className='btn btn-soft small';b.addEventListener('click',()=>{select.value=date;navigate(true);load();});jumpNav.append(b);});
+for(const [id,title] of [['trip-tickets','Tickets ↓'],['cable-to-oceanarium','Cable car directions ↓'],['saturday-transport','Transfers ↓']]){const dest=document.getElementById(id);if(dest){const b=e('button',title);b.type='button';b.className='btn btn-outline small';b.addEventListener('click',()=>dest.scrollIntoView({behavior:'smooth',block:'start'}));jumpNav.append(b);}}
+root.insertBefore(jumpNav,heading);
+const activityLabel=e('label','Jump to an activity');activityLabel.htmlFor='itinerary-activity';activityLabel.style.display='block';activityLabel.style.marginTop='12px';
+const activitySelect=e('select');activitySelect.id='itinerary-activity';activitySelect.style.maxWidth='100%';
+function fillActivities(){const previous=activitySelect.value;activitySelect.replaceChildren();const placeholder=e('option','Choose an activity…');placeholder.value='';activitySelect.append(placeholder);document.querySelectorAll('.stop[data-stop]').forEach(article=>{if(!article.id)article.id='activity-'+article.dataset.stop;const o=e('option',(article.closest('[data-date]')?'Oct '+article.closest('[data-date]').dataset.date+' · ':'')+(article.querySelector('h3')?.textContent||article.dataset.stop));o.value=article.id;activitySelect.append(o);});if([...activitySelect.options].some(o=>o.value===previous))activitySelect.value=previous;}
+activitySelect.addEventListener('change',()=>{if(activitySelect.value)document.getElementById(activitySelect.value)?.scrollIntoView({behavior:'smooth',block:'start'});});
+root.insertBefore(activityLabel,heading);root.insertBefore(activitySelect,heading);fillActivities();document.addEventListener('itinerary:updated',fillActivities);
+
 navigate(false);load();
 })();
